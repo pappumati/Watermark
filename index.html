@@ -447,7 +447,25 @@
   let onCropChange = null; // set per-mode to resize canvas when crop % changes
 
   let placeHandle = ()=>{};
-  let redraw = ()=>{};
+  let _redrawFn = ()=>{};
+  let _redrawScheduled = false;
+  // Coalesces rapid slider/drag events into one redraw per animation frame, so dragging stays smooth.
+  function redraw(){
+    if(_redrawScheduled) return;
+    _redrawScheduled = true;
+    requestAnimationFrame(()=>{ _redrawScheduled = false; _redrawFn(); });
+  }
+
+  // Shared draw routine: crop -> blur patch -> watermark. Used for both the live preview
+  // canvas (downscaled for speed) and the full-resolution export canvas.
+  function renderFrame(targetCtx, sourceEl, sw, sh, cw, ch){
+    targetCtx.clearRect(0,0,cw,ch);
+    drawSourceWithCrop(targetCtx, sourceEl, sw, sh, cw, ch);
+    drawBlurPatch(targetCtx, sourceEl, sw, sh, cw, ch);
+    drawWatermark(targetCtx, cw, ch);
+  }
+
+  const PREVIEW_MAX = 1100; // cap live-preview canvas size (px) so dragging/sliders stay smooth on phones
 
   // ---------- generic drag handling for a handle over a stage ----------
   function wireHandle(stageEl, handleEl, onMove){
@@ -566,8 +584,9 @@
 
     function resizeForCrop(){
       const r = cropRect(img.width, img.height);
-      canvas.width = r.sw;
-      canvas.height = r.sh;
+      const scale = Math.min(1, PREVIEW_MAX / Math.max(r.sw, r.sh));
+      canvas.width = Math.max(1, Math.round(r.sw * scale));
+      canvas.height = Math.max(1, Math.round(r.sh * scale));
     }
 
     dz.addEventListener('click', ()=>fileInput.click());
@@ -579,8 +598,10 @@
         stage.classList.add('active');
         controls.style.display='block';
         downloadBtn.style.display='block';
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = 'Download watermarked photo';
         buildControls(controls, false);
-        redraw = doRedraw;
+        _redrawFn = doRedraw;
         onCropChange = ()=>{ resizeForCrop(); placeHandle(); };
         placeHandle = ()=>positionHandleEl(stage, handle, cfg.posX, cfg.posY);
         placeHandle();
@@ -592,17 +613,32 @@
 
     function doRedraw(){
       if(!img) return;
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      drawSourceWithCrop(ctx, img, img.width, img.height, canvas.width, canvas.height);
-      drawBlurPatch(ctx, img, img.width, img.height, canvas.width, canvas.height);
-      drawWatermark(ctx, canvas.width, canvas.height);
+      renderFrame(ctx, img, img.width, img.height, canvas.width, canvas.height);
     }
 
     downloadBtn.addEventListener('click', ()=>{
-      const link = document.createElement('a');
-      link.download = 'watermarked-' + Date.now() + '.png';
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      if(!img) return;
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = 'Processing…';
+      // Let the button repaint before the heavy full-resolution render blocks the thread.
+      setTimeout(()=>{
+        const r = cropRect(img.width, img.height);
+        const off = document.createElement('canvas');
+        off.width = r.sw;
+        off.height = r.sh;
+        const offCtx = off.getContext('2d');
+        renderFrame(offCtx, img, img.width, img.height, off.width, off.height);
+        off.toBlob(blob=>{
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = 'watermarked-' + Date.now() + '.png';
+          link.href = url;
+          link.click();
+          URL.revokeObjectURL(url);
+          downloadBtn.disabled = false;
+          downloadBtn.textContent = 'Download watermarked photo';
+        }, 'image/png');
+      }, 30);
     });
   })();
 
@@ -642,7 +678,7 @@
         processBtn.style.display='block';
         hintEl.style.display='block';
         buildControls(controls, true);
-        redraw = doRedraw;
+        _redrawFn = doRedraw;
         onCropChange = ()=>{ resizeForCrop(); placeHandle(); };
         placeHandle = ()=>positionHandleEl(stage, handle, cfg.posX, cfg.posY);
         placeHandle();
