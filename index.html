@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Brand Stamp — Watermark Tool</title>
+<style>
+  :root{
+    --ink:#211d13;
+    --paper:#faf7f0;
+    --paper2:#f0ebdd;
+    --line:#d8cfb8;
+    --brass:#9c6b1f;
+    --brass-dim:#7a5417;
+    --moss:#3f6b34;
+    --muted:#6b6250;
+    --danger:#b3401f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Courier New', ui-monospace, Menlo, monospace;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:18px 16px 60px;}
+
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:18px;
+  }
+  header h1{
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size:22px;
+    letter-spacing:0.5px;
+    margin:0;
+    color:var(--brass);
+    font-weight:600;
+  }
+  header .tag{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+
+  .tabs{display:flex;gap:2px;margin-bottom:18px;border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .tab{
+    flex:1;padding:11px 0;text-align:center;font-size:13px;letter-spacing:1px;
+    background:var(--paper2);color:var(--muted);cursor:pointer;text-transform:uppercase;
+    transition:background .15s,color .15s;
+  }
+  .tab.active{background:var(--brass);color:#1a1508;font-weight:700;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:8px;
+    padding:26px 14px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    cursor:pointer;
+    margin-bottom:16px;
+    transition:border-color .15s;
+  }
+  .dropzone:active{border-color:var(--brass);}
+  .dropzone .big{display:block;font-size:26px;margin-bottom:6px;color:var(--brass-dim);}
+  input[type=file]{display:none;}
+
+  .stage{
+    position:relative;
+    width:100%;
+    background:repeating-conic-gradient(#e4ddc9 0% 25%, #f2ede0 0% 50%) 50%/16px 16px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+    margin-bottom:16px;
+    display:none;
+    touch-action:none;
+  }
+  .stage.active{display:block;}
+  .stage canvas, .stage video{display:block;width:100%;height:auto;}
+  video.srcvideo{display:none;}
+
+  .handle{
+    position:absolute;
+    width:26px;height:26px;
+    border:2px solid var(--brass);
+    background:rgba(201,162,75,0.25);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    cursor:grab;
+  }
+
+  fieldset{
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px;
+    margin:0 0 14px;
+  }
+  legend{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--brass-dim);
+    padding:0 6px;
+  }
+
+  .row{display:flex;gap:10px;margin-bottom:10px;}
+  .row:last-child{margin-bottom:0;}
+  .row > *{flex:1;}
+
+  .chip-group{display:flex;gap:8px;margin-bottom:10px;}
+  .chip{
+    flex:1;text-align:center;padding:9px 4px;border:1px solid var(--line);border-radius:6px;
+    font-size:12px;color:var(--muted);cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;
+  }
+  .chip.on{border-color:var(--brass);color:var(--brass);background:rgba(201,162,75,0.08);}
+
+  label.field{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;}
+  input[type=text], input[type=number], select{
+    width:100%;
+    background:var(--paper2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:5px;
+    padding:9px 10px;
+    font-family:inherit;
+    font-size:14px;
+  }
+  input[type=color]{
+    width:100%;height:38px;background:var(--paper2);border:1px solid var(--line);border-radius:5px;padding:2px;
+  }
+  input[type=range]{width:100%;accent-color:var(--brass);}
+  .range-val{font-size:11px;color:var(--muted);float:right;}
+
+  .btn{
+    width:100%;
+    padding:13px;
+    border-radius:7px;
+    border:1px solid var(--brass);
+    background:var(--brass);
+    color:#1a1508;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .btn:disabled{opacity:0.35;}
+  .btn.secondary{background:transparent;color:var(--brass);}
+  .btn.small{padding:9px;font-size:12px;}
+
+  .presetgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+  .preset{
+    border:1px solid var(--line);border-radius:5px;padding:8px 0;text-align:center;
+    font-size:10px;color:var(--muted);cursor:pointer;text-transform:uppercase;
+  }
+  .preset:active{border-color:var(--brass);color:var(--brass);}
+
+  .status{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;min-height:16px;}
+  .progress{
+    width:100%;height:6px;background:var(--paper2);border-radius:3px;overflow:hidden;margin-top:10px;display:none;
+  }
+  .progress.active{display:block;}
+  .progress > div{height:100%;width:0%;background:var(--brass);transition:width .1s linear;}
+
+  .hint{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;}
+  .footer-note{font-size:10px;color:var(--muted);text-align:center;margin-top:24px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Brand Stamp</h1>
+      <div class="tag">watermark your own media</div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="image">Image</div>
+    <div class="tab" data-tab="video">Video</div>
+  </div>
+
+  <!-- IMAGE PANEL -->
+  <div class="panel active" id="panel-image">
+    <div class="dropzone" id="dz-image">
+      <span class="big">🖼</span>
+      Tap to choose a photo
+      <input type="file" id="file-image" accept="image/*">
+    </div>
+    <div class="stage" id="stage-image">
+      <canvas id="canvas-image"></canvas>
+      <div class="handle" id="handle-image"></div>
+    </div>
+    <div id="controls-image" style="display:none"></div>
+    <button class="btn" id="download-image" style="display:none">Download watermarked photo</button>
+  </div>
+
+  <!-- VIDEO PANEL -->
+  <div class="panel" id="panel-video">
+    <div class="dropzone" id="dz-video">
+      <span class="big">🎬</span>
+      Tap to choose a video
+      <input type="file" id="file-video" accept="video/*">
+    </div>
+    <div class="stage" id="stage-video">
+      <video class="srcvideo" id="srcvideo" playsinline muted></video>
+      <canvas id="canvas-video"></canvas>
+      <div class="handle" id="handle-video"></div>
+    </div>
+    <div id="controls-video" style="display:none"></div>
+    <button class="btn" id="process-video" style="display:none">Render &amp; download watermarked video</button>
+    <div class="progress" id="video-progress"><div id="video-progress-bar"></div></div>
+    <div class="status" id="video-status"></div>
+    <div class="hint" id="video-hint" style="display:none">
+      Output is .webm (plays fine on WhatsApp/YouTube/Android). Rendering happens on your phone — for long videos this can take a few minutes and drain battery, so keep the app open and phone plugged in if possible.
+    </div>
+  </div>
+
+  <div class="footer-note">Use only on media you own or have rights to brand.</div>
+</div>
+
+<script>
+(function(){
+  // ---------- shared watermark config ----------
+  const cfg = {
+    mode: 'text',        // 'text' | 'logo' | 'both'
+    text: 'Gurukrupa Library',
+    fontSize: 28,
+    color: '#9c6b1f',
+    opacity: 0.75,
+    logoImg: null,
+    logoScale: 0.18,     // relative to canvas width
+    posX: 0.5,           // relative 0-1 (center anchor of primary element)
+    posY: 0.5,
+    gap: 10,
+    // --- remove old watermark ---
+    crop: { top:0, bottom:0, left:0, right:0 },   // percent trimmed from each edge
+    blurPatch: { enabled:false, x:50, y:90, w:30, h:12, strength:18 } // percent-based rect + blur px
+  };
+
+  function buildControls(container, isVideo){
+    container.innerHTML = `
+      <fieldset>
+        <legend>Watermark type</legend>
+        <div class="chip-group" data-role="mode">
+          <div class="chip" data-val="text">Text</div>
+          <div class="chip" data-val="logo">Logo</div>
+          <div class="chip" data-val="both">Both</div>
+        </div>
+
+        <div data-role="text-fields">
+          <label class="field">Brand text</label>
+          <input type="text" data-role="text" value="${cfg.text}" placeholder="e.g. Gurukrupa Library">
+          <div class="row" style="margin-top:10px">
+            <div>
+              <label class="field">Font size <span class="range-val" data-role="fontSizeVal">${cfg.fontSize}</span></label>
+              <input type="range" data-role="fontSize" min="12" max="80" value="${cfg.fontSize}">
+            </div>
+            <div>
+              <label class="field">Color</label>
+              <input type="color" data-role="color" value="${cfg.color}">
+            </div>
+          </div>
+        </div>
+
+        <div data-role="logo-fields" style="margin-top:10px;">
+          <label class="field">Logo image</label>
+          <input type="file" accept="image/*" data-role="logoFile">
+          <label class="field" style="margin-top:8px">Logo size <span class="range-val" data-role="logoScaleVal">${Math.round(cfg.logoScale*100)}%</span></label>
+          <input type="range" data-role="logoScale" min="5" max="50" value="${Math.round(cfg.logoScale*100)}">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Remove old watermark</legend>
+        <div class="hint" style="margin-bottom:10px;">Use on media you own. Crop trims an edge completely (best for corner/strip stamps). Blur patch smudges a small area (best when cropping would cut off content).</div>
+
+        <label class="field">Crop edges (%)</label>
+        <div class="row">
+          <div>
+            <label class="field">Top <span class="range-val" data-role="cropTopVal">0</span></label>
+            <input type="range" data-role="cropTop" min="0" max="40" value="0">
+          </div>
+          <div>
+            <label class="field">Bottom <span class="range-val" data-role="cropBottomVal">0</span></label>
+            <input type="range" data-role="cropBottom" min="0" max="40" value="0">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label class="field">Left <span class="range-val" data-role="cropLeftVal">0</span></label>
+            <input type="range" data-role="cropLeft" min="0" max="40" value="0">
+          </div>
+          <div>
+            <label class="field">Right <span class="range-val" data-role="cropRightVal">0</span></label>
+            <input type="range" data-role="cropRight" min="0" max="40" value="0">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;align-items:center;">
+          <label class="field" style="margin:0;flex:2;">Blur patch (covers old watermark)</label>
+          <div class="chip" data-role="blurToggle" style="flex:1;">Off</div>
+        </div>
+        <div data-role="blur-fields" style="display:none;margin-top:8px;">
+          <div class="row">
+            <div>
+              <label class="field">X <span class="range-val" data-role="blurXVal">50</span></label>
+              <input type="range" data-role="blurX" min="0" max="100" value="50">
+            </div>
+            <div>
+              <label class="field">Y <span class="range-val" data-role="blurYVal">90</span></label>
+              <input type="range" data-role="blurY" min="0" max="100" value="90">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label class="field">Width <span class="range-val" data-role="blurWVal">30</span></label>
+              <input type="range" data-role="blurW" min="5" max="100" value="30">
+            </div>
+            <div>
+              <label class="field">Height <span class="range-val" data-role="blurHVal">12</span></label>
+              <input type="range" data-role="blurH" min="5" max="100" value="12">
+            </div>
+          </div>
+          <label class="field">Blur strength <span class="range-val" data-role="blurStrengthVal">18</span></label>
+          <input type="range" data-role="blurStrength" min="4" max="40" value="18">
+          <div class="hint">Position the patch over the old watermark using X/Y (top-left corner) and Width/Height. Motorola's stamp usually sits bottom-left/bottom-right — try X 0-30 or 70-100, Y 85-95.</div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Placement &amp; opacity</legend>
+        <div class="presetgrid" data-role="presets">
+          <div class="preset" data-pos="0.12,0.1">↖ top-left</div>
+          <div class="preset" data-pos="0.5,0.1">↑ top-center</div>
+          <div class="preset" data-pos="0.88,0.1">↗ top-right</div>
+          <div class="preset" data-pos="0.12,0.9">↙ bottom-left</div>
+          <div class="preset" data-pos="0.5,0.9">↓ bottom-center</div>
+          <div class="preset" data-pos="0.88,0.9">↘ bottom-right</div>
+        </div>
+        <div class="hint">Or drag the circular handle on the preview to fine-tune position.</div>
+        <label class="field" style="margin-top:10px">Opacity <span class="range-val" data-role="opacityVal">${Math.round(cfg.opacity*100)}%</span></label>
+        <input type="range" data-role="opacity" min="10" max="100" value="${Math.round(cfg.opacity*100)}">
+      </fieldset>
+    `;
+
+    const modeChips = container.querySelectorAll('[data-role="mode"] .chip');
+    function refreshModeUI(){
+      modeChips.forEach(c=>c.classList.toggle('on', c.dataset.val===cfg.mode));
+      container.querySelector('[data-role="text-fields"]').style.display = (cfg.mode==='text'||cfg.mode==='both')?'block':'none';
+      container.querySelector('[data-role="logo-fields"]').style.display = (cfg.mode==='logo'||cfg.mode==='both')?'block':'none';
+    }
+    modeChips.forEach(c=>c.addEventListener('click',()=>{cfg.mode=c.dataset.val;refreshModeUI();redraw();}));
+    refreshModeUI();
+
+    container.querySelector('[data-role="text"]').addEventListener('input', e=>{cfg.text=e.target.value;redraw();});
+    container.querySelector('[data-role="fontSize"]').addEventListener('input', e=>{
+      cfg.fontSize=+e.target.value;
+      container.querySelector('[data-role="fontSizeVal"]').textContent=cfg.fontSize;
+      redraw();
+    });
+    container.querySelector('[data-role="color"]').addEventListener('input', e=>{cfg.color=e.target.value;redraw();});
+    container.querySelector('[data-role="opacity"]').addEventListener('input', e=>{
+      cfg.opacity=+e.target.value/100;
+      container.querySelector('[data-role="opacityVal"]').textContent=e.target.value+'%';
+      redraw();
+    });
+    container.querySelector('[data-role="logoScale"]').addEventListener('input', e=>{
+      cfg.logoScale=+e.target.value/100;
+      container.querySelector('[data-role="logoScaleVal"]').textContent=e.target.value+'%';
+      redraw();
+    });
+    container.querySelector('[data-role="logoFile"]').addEventListener('change', e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const img=new Image();
+      img.onload=()=>{cfg.logoImg=img;redraw();};
+      img.src=URL.createObjectURL(f);
+    });
+    container.querySelectorAll('[data-role="presets"] .preset').forEach(p=>{
+      p.addEventListener('click',()=>{
+        const [x,y]=p.dataset.pos.split(',').map(Number);
+        cfg.posX=x;cfg.posY=y;
+        placeHandle();
+        redraw();
+      });
+    });
+
+    // --- crop edges ---
+    function wireCrop(role, key){
+      const el = container.querySelector(`[data-role="${role}"]`);
+      const valEl = container.querySelector(`[data-role="${role}Val"]`);
+      el.value = cfg.crop[key];
+      valEl.textContent = cfg.crop[key];
+      el.addEventListener('input', e=>{
+        cfg.crop[key] = +e.target.value;
+        valEl.textContent = e.target.value;
+        if(onCropChange) onCropChange();
+        redraw();
+      });
+    }
+    wireCrop('cropTop','top');
+    wireCrop('cropBottom','bottom');
+    wireCrop('cropLeft','left');
+    wireCrop('cropRight','right');
+
+    // --- blur patch ---
+    const blurToggle = container.querySelector('[data-role="blurToggle"]');
+    const blurFields = container.querySelector('[data-role="blur-fields"]');
+    function refreshBlurUI(){
+      blurToggle.classList.toggle('on', cfg.blurPatch.enabled);
+      blurToggle.textContent = cfg.blurPatch.enabled ? 'On' : 'Off';
+      blurFields.style.display = cfg.blurPatch.enabled ? 'block' : 'none';
+    }
+    blurToggle.addEventListener('click', ()=>{
+      cfg.blurPatch.enabled = !cfg.blurPatch.enabled;
+      refreshBlurUI();
+      redraw();
+    });
+    refreshBlurUI();
+
+    function wireBlur(role, key, isFloat){
+      const el = container.querySelector(`[data-role="${role}"]`);
+      const valEl = container.querySelector(`[data-role="${role}Val"]`);
+      el.value = cfg.blurPatch[key];
+      valEl.textContent = cfg.blurPatch[key];
+      el.addEventListener('input', e=>{
+        cfg.blurPatch[key] = +e.target.value;
+        valEl.textContent = e.target.value;
+        redraw();
+      });
+    }
+    wireBlur('blurX','x');
+    wireBlur('blurY','y');
+    wireBlur('blurW','w');
+    wireBlur('blurH','h');
+    wireBlur('blurStrength','strength');
+  }
+
+  let onCropChange = null; // set per-mode to resize canvas when crop % changes
+
+  let placeHandle = ()=>{};
+  let redraw = ()=>{};
+
+  // ---------- generic drag handling for a handle over a stage ----------
+  function wireHandle(stageEl, handleEl, onMove){
+    function setFromClientXY(clientX, clientY){
+      const rect = stageEl.getBoundingClientRect();
+      let x = (clientX - rect.left) / rect.width;
+      let y = (clientY - rect.top) / rect.height;
+      x = Math.min(1, Math.max(0, x));
+      y = Math.min(1, Math.max(0, y));
+      onMove(x,y);
+    }
+    let dragging=false;
+    handleEl.addEventListener('pointerdown', e=>{dragging=true;handleEl.setPointerCapture(e.pointerId);});
+    handleEl.addEventListener('pointermove', e=>{if(dragging) setFromClientXY(e.clientX,e.clientY);});
+    handleEl.addEventListener('pointerup', ()=>dragging=false);
+    handleEl.addEventListener('pointercancel', ()=>dragging=false);
+  }
+
+  function positionHandleEl(stageEl, handleEl, x, y){
+    handleEl.style.left = (x*100)+'%';
+    handleEl.style.top = (y*100)+'%';
+  }
+
+  // ---------- crop + blur-patch helpers ----------
+  function cropRect(sw, sh){
+    const top = cfg.crop.top/100*sh;
+    const bottom = cfg.crop.bottom/100*sh;
+    const left = cfg.crop.left/100*sw;
+    const right = cfg.crop.right/100*sw;
+    const cw = Math.max(1, sw - left - right);
+    const ch = Math.max(1, sh - top - bottom);
+    return {sx:left, sy:top, sw:cw, sh:ch};
+  }
+
+  // Draws sourceEl (image or video) into ctx applying crop, returns the crop rect used.
+  function drawSourceWithCrop(ctx, sourceEl, sw, sh, cw, ch){
+    const r = cropRect(sw, sh);
+    ctx.drawImage(sourceEl, r.sx, r.sy, r.sw, r.sh, 0, 0, cw, ch);
+    return r;
+  }
+
+  // Draws a blurred patch of the same source over itself, clipped to the configured rect.
+  function drawBlurPatch(ctx, sourceEl, sw, sh, cw, ch){
+    if(!cfg.blurPatch.enabled) return;
+    const r = cropRect(sw, sh);
+    const px = cfg.blurPatch.x/100*cw;
+    const py = cfg.blurPatch.y/100*ch;
+    const pw = cfg.blurPatch.w/100*cw;
+    const ph = cfg.blurPatch.h/100*ch;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(px, py, pw, ph);
+    ctx.clip();
+    ctx.filter = `blur(${cfg.blurPatch.strength}px)`;
+    ctx.drawImage(sourceEl, r.sx, r.sy, r.sw, r.sh, 0, 0, cw, ch);
+    ctx.filter = 'none';
+    ctx.restore();
+  }
+
+  // ---------- drawing ----------
+  function drawWatermark(ctx, w, h){
+    ctx.save();
+    ctx.globalAlpha = cfg.opacity;
+    const cx = cfg.posX * w;
+    const cy = cfg.posY * h;
+
+    let logoW=0, logoH=0;
+    if((cfg.mode==='logo'||cfg.mode==='both') && cfg.logoImg){
+      logoW = w * cfg.logoScale;
+      logoH = logoW * (cfg.logoImg.height/cfg.logoImg.width);
+    }
+    let textW=0, textH=0;
+    if((cfg.mode==='text'||cfg.mode==='both') && cfg.text){
+      ctx.font = `bold ${cfg.fontSize}px Georgia, serif`;
+      textW = ctx.measureText(cfg.text).width;
+      textH = cfg.fontSize;
+    }
+
+    if(cfg.mode==='both' && cfg.logoImg && cfg.text){
+      const totalH = logoH + cfg.gap + textH;
+      const topY = cy - totalH/2;
+      ctx.drawImage(cfg.logoImg, cx-logoW/2, topY, logoW, logoH);
+      ctx.fillStyle = cfg.color;
+      ctx.textAlign='center';
+      ctx.textBaseline='top';
+      ctx.font = `bold ${cfg.fontSize}px Georgia, serif`;
+      ctx.shadowColor='rgba(0,0,0,0.5)';
+      ctx.shadowBlur=4;
+      ctx.fillText(cfg.text, cx, topY+logoH+cfg.gap);
+    } else if((cfg.mode==='logo') && cfg.logoImg){
+      ctx.drawImage(cfg.logoImg, cx-logoW/2, cy-logoH/2, logoW, logoH);
+    } else if((cfg.mode==='text'||cfg.mode==='both') && cfg.text){
+      ctx.fillStyle = cfg.color;
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.shadowColor='rgba(0,0,0,0.5)';
+      ctx.shadowBlur=4;
+      ctx.fillText(cfg.text, cx, cy);
+    }
+    ctx.restore();
+  }
+
+  // =========================================================
+  // IMAGE MODE
+  // =========================================================
+  (function(){
+    const dz = document.getElementById('dz-image');
+    const fileInput = document.getElementById('file-image');
+    const stage = document.getElementById('stage-image');
+    const canvas = document.getElementById('canvas-image');
+    const ctx = canvas.getContext('2d');
+    const handle = document.getElementById('handle-image');
+    const controls = document.getElementById('controls-image');
+    const downloadBtn = document.getElementById('download-image');
+    let img = null;
+
+    function resizeForCrop(){
+      const r = cropRect(img.width, img.height);
+      canvas.width = r.sw;
+      canvas.height = r.sh;
+    }
+
+    dz.addEventListener('click', ()=>fileInput.click());
+    fileInput.addEventListener('change', e=>{
+      const f = e.target.files[0]; if(!f) return;
+      img = new Image();
+      img.onload = ()=>{
+        resizeForCrop();
+        stage.classList.add('active');
+        controls.style.display='block';
+        downloadBtn.style.display='block';
+        buildControls(controls, false);
+        redraw = doRedraw;
+        onCropChange = ()=>{ resizeForCrop(); placeHandle(); };
+        placeHandle = ()=>positionHandleEl(stage, handle, cfg.posX, cfg.posY);
+        placeHandle();
+        wireHandle(stage, handle, (x,y)=>{cfg.posX=x;cfg.posY=y;positionHandleEl(stage,handle,x,y);doRedraw();});
+        doRedraw();
+      };
+      img.src = URL.createObjectURL(f);
+    });
+
+    function doRedraw(){
+      if(!img) return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawSourceWithCrop(ctx, img, img.width, img.height, canvas.width, canvas.height);
+      drawBlurPatch(ctx, img, img.width, img.height, canvas.width, canvas.height);
+      drawWatermark(ctx, canvas.width, canvas.height);
+    }
+
+    downloadBtn.addEventListener('click', ()=>{
+      const link = document.createElement('a');
+      link.download = 'watermarked-' + Date.now() + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  })();
+
+  // =========================================================
+  // VIDEO MODE
+  // =========================================================
+  (function(){
+    const dz = document.getElementById('dz-video');
+    const fileInput = document.getElementById('file-video');
+    const stage = document.getElementById('stage-video');
+    const video = document.getElementById('srcvideo');
+    const canvas = document.getElementById('canvas-video');
+    const ctx = canvas.getContext('2d');
+    const handle = document.getElementById('handle-video');
+    const controls = document.getElementById('controls-video');
+    const processBtn = document.getElementById('process-video');
+    const statusEl = document.getElementById('video-status');
+    const progressWrap = document.getElementById('video-progress');
+    const progressBar = document.getElementById('video-progress-bar');
+    const hintEl = document.getElementById('video-hint');
+
+    function resizeForCrop(){
+      const r = cropRect(video.videoWidth, video.videoHeight);
+      canvas.width = r.sw;
+      canvas.height = r.sh;
+    }
+
+    dz.addEventListener('click', ()=>fileInput.click());
+    fileInput.addEventListener('change', e=>{
+      const f = e.target.files[0]; if(!f) return;
+      video.src = URL.createObjectURL(f);
+      video.addEventListener('loadedmetadata', function onMeta(){
+        video.removeEventListener('loadedmetadata', onMeta);
+        resizeForCrop();
+        stage.classList.add('active');
+        controls.style.display='block';
+        processBtn.style.display='block';
+        hintEl.style.display='block';
+        buildControls(controls, true);
+        redraw = doRedraw;
+        onCropChange = ()=>{ resizeForCrop(); placeHandle(); };
+        placeHandle = ()=>positionHandleEl(stage, handle, cfg.posX, cfg.posY);
+        placeHandle();
+        wireHandle(stage, handle, (x,y)=>{cfg.posX=x;cfg.posY=y;positionHandleEl(stage,handle,x,y);doRedraw();});
+        video.currentTime = 0;
+      });
+      video.addEventListener('seeked', doRedraw);
+    });
+
+    function doRedraw(){
+      if(!video.videoWidth) return;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawSourceWithCrop(ctx, video, video.videoWidth, video.videoHeight, canvas.width, canvas.height);
+      drawBlurPatch(ctx, video, video.videoWidth, video.videoHeight, canvas.width, canvas.height);
+      drawWatermark(ctx, canvas.width, canvas.height);
+    }
+
+    processBtn.addEventListener('click', async ()=>{
+      if(!('MediaRecorder' in window)){
+        statusEl.textContent = 'Your browser cannot export video. Please use Chrome on Android.';
+        return;
+      }
+      processBtn.disabled = true;
+      statusEl.textContent = 'Rendering… keep this tab open.';
+      progressWrap.classList.add('active');
+      progressBar.style.width = '0%';
+
+      const stream = canvas.captureStream(30);
+      let mimeType = 'video/webm;codecs=vp9';
+      if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+      if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, {mimeType, videoBitsPerSecond: 6_000_000});
+      recorder.ondataavailable = e=>{ if(e.data.size>0) chunks.push(e.data); };
+
+      const finished = new Promise(resolve=>{
+        recorder.onstop = resolve;
+      });
+
+      video.currentTime = 0;
+      await new Promise(r=>{ video.onseeked = r; });
+
+      recorder.start();
+
+      let drawing = true;
+      function drawFrame(){
+        if(!drawing) return;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        drawSourceWithCrop(ctx, video, video.videoWidth, video.videoHeight, canvas.width, canvas.height);
+        drawBlurPatch(ctx, video, video.videoWidth, video.videoHeight, canvas.width, canvas.height);
+        drawWatermark(ctx, canvas.width, canvas.height);
+        const pct = video.duration ? Math.min(100, (video.currentTime/video.duration)*100) : 0;
+        progressBar.style.width = pct+'%';
+        requestAnimationFrame(drawFrame);
+      }
+      drawFrame();
+
+      video.muted = true;
+      await video.play();
+
+      video.onended = ()=>{
+        drawing = false;
+        recorder.stop();
+      };
+
+      await finished;
+
+      const blob = new Blob(chunks, {type:'video/webm'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'watermarked-' + Date.now() + '.webm';
+      link.click();
+
+      statusEl.textContent = 'Done — video downloaded.';
+      progressWrap.classList.remove('active');
+      processBtn.disabled = false;
+    });
+  })();
+
+  // =========================================================
+  // TABS
+  // =========================================================
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+    });
+  });
+})();
+</script>
+</body>
+</html>
