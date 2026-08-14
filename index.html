@@ -102,12 +102,40 @@
     margin:0 0 14px;
   }
   legend{
-    font-size:11px;
+    font-size:13px;
     text-transform:uppercase;
-    letter-spacing:1.5px;
+    letter-spacing:1px;
     color:var(--brass-dim);
     padding:0 6px;
+    display:flex;
+    align-items:center;
+    gap:8px;
   }
+  .step-num{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:20px;height:20px;
+    border-radius:50%;
+    background:var(--brass);
+    color:#fff;
+    font-size:12px;
+    font-weight:700;
+    flex-shrink:0;
+  }
+  .step-sub{font-size:12px;color:var(--muted);margin:-4px 0 12px;text-transform:none;letter-spacing:0;}
+
+  .accordion-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    padding:2px 0;
+  }
+  .accordion-toggle .chev{transition:transform .15s;color:var(--brass-dim);font-size:12px;}
+  .accordion-toggle.open .chev{transform:rotate(90deg);}
+  .accordion-body{display:none;margin-top:12px;}
+  .accordion-body.open{display:block;}
 
   .row{display:flex;gap:10px;margin-bottom:10px;}
   .row:last-child{margin-bottom:0;}
@@ -191,8 +219,9 @@
   <!-- IMAGE PANEL -->
   <div class="panel active" id="panel-image">
     <div class="dropzone" id="dz-image">
-      <span class="big">🖼</span>
-      Tap to choose a photo
+      <span class="big">📸</span>
+      <strong>Tap here to pick a photo</strong>
+      <div class="hint" style="margin-top:4px;">Choose any photo from your gallery to get started</div>
       <input type="file" id="file-image" accept="image/*">
     </div>
     <div class="stage" id="stage-image">
@@ -200,14 +229,15 @@
       <div class="handle" id="handle-image"></div>
     </div>
     <div id="controls-image" style="display:none"></div>
-    <button class="btn" id="download-image" style="display:none">Download watermarked photo</button>
+    <button class="btn" id="download-image" style="display:none">💾 Save my photo</button>
   </div>
 
   <!-- VIDEO PANEL -->
   <div class="panel" id="panel-video">
     <div class="dropzone" id="dz-video">
       <span class="big">🎬</span>
-      Tap to choose a video
+      <strong>Tap here to pick a video</strong>
+      <div class="hint" style="margin-top:4px;">Choose any video from your gallery to get started</div>
       <input type="file" id="file-video" accept="video/*">
     </div>
     <div class="stage" id="stage-video">
@@ -216,7 +246,7 @@
       <div class="handle" id="handle-video"></div>
     </div>
     <div id="controls-video" style="display:none"></div>
-    <button class="btn" id="process-video" style="display:none">Render &amp; download watermarked video</button>
+    <button class="btn" id="process-video" style="display:none">💾 Save my video</button>
     <div class="progress" id="video-progress"><div id="video-progress-bar"></div></div>
     <div class="status" id="video-status"></div>
     <div class="hint" id="video-hint" style="display:none">
@@ -249,19 +279,19 @@
   function buildControls(container, isVideo){
     container.innerHTML = `
       <fieldset>
-        <legend>Watermark type</legend>
+        <legend><span class="step-num">1</span> What do you want to add?</legend>
         <div class="chip-group" data-role="mode">
-          <div class="chip" data-val="text">Text</div>
-          <div class="chip" data-val="logo">Logo</div>
-          <div class="chip" data-val="both">Both</div>
+          <div class="chip" data-val="text">✍️ Text</div>
+          <div class="chip" data-val="logo">🖼 Logo</div>
+          <div class="chip" data-val="both">✍️🖼 Both</div>
         </div>
 
         <div data-role="text-fields">
-          <label class="field">Brand text</label>
+          <label class="field">Your text (shop / brand name)</label>
           <input type="text" data-role="text" value="${cfg.text}" placeholder="e.g. Gurukrupa Library">
           <div class="row" style="margin-top:10px">
             <div>
-              <label class="field">Font size <span class="range-val" data-role="fontSizeVal">${cfg.fontSize}</span></label>
+              <label class="field">Size <span class="range-val" data-role="fontSizeVal">${cfg.fontSize}</span></label>
               <input type="range" data-role="fontSize" min="12" max="80" value="${cfg.fontSize}">
             </div>
             <div>
@@ -272,7 +302,7 @@
         </div>
 
         <div data-role="logo-fields" style="margin-top:10px;">
-          <label class="field">Logo image</label>
+          <label class="field">Choose a logo image</label>
           <input type="file" accept="image/*" data-role="logoFile">
           <label class="field" style="margin-top:8px">Logo size <span class="range-val" data-role="logoScaleVal">${Math.round(cfg.logoScale*100)}%</span></label>
           <input type="range" data-role="logoScale" min="5" max="50" value="${Math.round(cfg.logoScale*100)}">
@@ -280,77 +310,89 @@
       </fieldset>
 
       <fieldset>
-        <legend>Remove old watermark</legend>
-        <div class="hint" style="margin-bottom:10px;">Use on media you own. Crop trims an edge completely (best for corner/strip stamps). Blur patch smudges a small area (best when cropping would cut off content).</div>
-
-        <label class="field">Crop edges (%)</label>
-        <div class="row">
-          <div>
-            <label class="field">Top <span class="range-val" data-role="cropTopVal">0</span></label>
-            <input type="range" data-role="cropTop" min="0" max="40" value="0">
-          </div>
-          <div>
-            <label class="field">Bottom <span class="range-val" data-role="cropBottomVal">0</span></label>
-            <input type="range" data-role="cropBottom" min="0" max="40" value="0">
-          </div>
+        <legend><span class="step-num">2</span> Where should it go?</legend>
+        <div class="step-sub">Tap a corner, or drag the circle on the photo above</div>
+        <div class="presetgrid" data-role="presets">
+          <div class="preset" data-pos="0.12,0.1">↖ Top left</div>
+          <div class="preset" data-pos="0.5,0.1">↑ Top mid</div>
+          <div class="preset" data-pos="0.88,0.1">↗ Top right</div>
+          <div class="preset" data-pos="0.12,0.9">↙ Bottom left</div>
+          <div class="preset" data-pos="0.5,0.9">↓ Bottom mid</div>
+          <div class="preset" data-pos="0.88,0.9">↘ Bottom right</div>
         </div>
-        <div class="row">
-          <div>
-            <label class="field">Left <span class="range-val" data-role="cropLeftVal">0</span></label>
-            <input type="range" data-role="cropLeft" min="0" max="40" value="0">
-          </div>
-          <div>
-            <label class="field">Right <span class="range-val" data-role="cropRightVal">0</span></label>
-            <input type="range" data-role="cropRight" min="0" max="40" value="0">
-          </div>
-        </div>
-
-        <div class="row" style="margin-top:12px;align-items:center;">
-          <label class="field" style="margin:0;flex:2;">Blur patch (covers old watermark)</label>
-          <div class="chip" data-role="blurToggle" style="flex:1;">Off</div>
-        </div>
-        <div data-role="blur-fields" style="display:none;margin-top:8px;">
-          <div class="row">
-            <div>
-              <label class="field">X <span class="range-val" data-role="blurXVal">50</span></label>
-              <input type="range" data-role="blurX" min="0" max="100" value="50">
-            </div>
-            <div>
-              <label class="field">Y <span class="range-val" data-role="blurYVal">90</span></label>
-              <input type="range" data-role="blurY" min="0" max="100" value="90">
-            </div>
-          </div>
-          <div class="row">
-            <div>
-              <label class="field">Width <span class="range-val" data-role="blurWVal">30</span></label>
-              <input type="range" data-role="blurW" min="5" max="100" value="30">
-            </div>
-            <div>
-              <label class="field">Height <span class="range-val" data-role="blurHVal">12</span></label>
-              <input type="range" data-role="blurH" min="5" max="100" value="12">
-            </div>
-          </div>
-          <label class="field">Blur strength <span class="range-val" data-role="blurStrengthVal">18</span></label>
-          <input type="range" data-role="blurStrength" min="4" max="40" value="18">
-          <div class="hint">Position the patch over the old watermark using X/Y (top-left corner) and Width/Height. Motorola's stamp usually sits bottom-left/bottom-right — try X 0-30 or 70-100, Y 85-95.</div>
-        </div>
+        <label class="field" style="margin-top:10px">How visible <span class="range-val" data-role="opacityVal">${Math.round(cfg.opacity*100)}%</span></label>
+        <input type="range" data-role="opacity" min="10" max="100" value="${Math.round(cfg.opacity*100)}">
       </fieldset>
 
       <fieldset>
-        <legend>Placement &amp; opacity</legend>
-        <div class="presetgrid" data-role="presets">
-          <div class="preset" data-pos="0.12,0.1">↖ top-left</div>
-          <div class="preset" data-pos="0.5,0.1">↑ top-center</div>
-          <div class="preset" data-pos="0.88,0.1">↗ top-right</div>
-          <div class="preset" data-pos="0.12,0.9">↙ bottom-left</div>
-          <div class="preset" data-pos="0.5,0.9">↓ bottom-center</div>
-          <div class="preset" data-pos="0.88,0.9">↘ bottom-right</div>
+        <div class="accordion-toggle" data-role="advancedToggle">
+          <legend style="padding:0;margin:0;border:0;"><span class="step-num">+</span> Need to remove an old watermark?</legend>
+          <span class="chev">▶</span>
         </div>
-        <div class="hint">Or drag the circular handle on the preview to fine-tune position.</div>
-        <label class="field" style="margin-top:10px">Opacity <span class="range-val" data-role="opacityVal">${Math.round(cfg.opacity*100)}%</span></label>
-        <input type="range" data-role="opacity" min="10" max="100" value="${Math.round(cfg.opacity*100)}">
+        <div class="accordion-body" data-role="advancedBody">
+          <div class="hint" style="margin-bottom:10px;">Only use this on photos/videos you own. <strong>Trim</strong> cuts an edge off completely (good for a stamp in a corner). <strong>Blur spot</strong> smudges one small area instead (good when trimming would cut off things you want to keep).</div>
+
+          <label class="field">Trim edges</label>
+          <div class="row">
+            <div>
+              <label class="field">Top <span class="range-val" data-role="cropTopVal">0</span></label>
+              <input type="range" data-role="cropTop" min="0" max="40" value="0">
+            </div>
+            <div>
+              <label class="field">Bottom <span class="range-val" data-role="cropBottomVal">0</span></label>
+              <input type="range" data-role="cropBottom" min="0" max="40" value="0">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label class="field">Left <span class="range-val" data-role="cropLeftVal">0</span></label>
+              <input type="range" data-role="cropLeft" min="0" max="40" value="0">
+            </div>
+            <div>
+              <label class="field">Right <span class="range-val" data-role="cropRightVal">0</span></label>
+              <input type="range" data-role="cropRight" min="0" max="40" value="0">
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;align-items:center;">
+            <label class="field" style="margin:0;flex:2;">Blur a spot instead</label>
+            <div class="chip" data-role="blurToggle" style="flex:1;">Off</div>
+          </div>
+          <div data-role="blur-fields" style="display:none;margin-top:8px;">
+            <div class="row">
+              <div>
+                <label class="field">Left/right position <span class="range-val" data-role="blurXVal">50</span></label>
+                <input type="range" data-role="blurX" min="0" max="100" value="50">
+              </div>
+              <div>
+                <label class="field">Up/down position <span class="range-val" data-role="blurYVal">90</span></label>
+                <input type="range" data-role="blurY" min="0" max="100" value="90">
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label class="field">Width <span class="range-val" data-role="blurWVal">30</span></label>
+                <input type="range" data-role="blurW" min="5" max="100" value="30">
+              </div>
+              <div>
+                <label class="field">Height <span class="range-val" data-role="blurHVal">12</span></label>
+                <input type="range" data-role="blurH" min="5" max="100" value="12">
+              </div>
+            </div>
+            <label class="field">Blur strength <span class="range-val" data-role="blurStrengthVal">18</span></label>
+            <input type="range" data-role="blurStrength" min="4" max="40" value="18">
+            <div class="hint">Move the blur box over the old watermark using the position sliders. A phone's own stamp is usually near a bottom corner — try left/right 0-30 or 70-100, and up/down 85-95.</div>
+          </div>
+        </div>
       </fieldset>
     `;
+
+    const advToggle = container.querySelector('[data-role="advancedToggle"]');
+    const advBody = container.querySelector('[data-role="advancedBody"]');
+    advToggle.addEventListener('click', ()=>{
+      const open = advBody.classList.toggle('open');
+      advToggle.classList.toggle('open', open);
+    });
 
     const modeChips = container.querySelectorAll('[data-role="mode"] .chip');
     function refreshModeUI(){
@@ -599,7 +641,7 @@
         controls.style.display='block';
         downloadBtn.style.display='block';
         downloadBtn.disabled = false;
-        downloadBtn.textContent = 'Download watermarked photo';
+        downloadBtn.textContent = '💾 Save my photo';
         buildControls(controls, false);
         _redrawFn = doRedraw;
         onCropChange = ()=>{ resizeForCrop(); placeHandle(); };
@@ -636,7 +678,7 @@
           link.click();
           URL.revokeObjectURL(url);
           downloadBtn.disabled = false;
-          downloadBtn.textContent = 'Download watermarked photo';
+          downloadBtn.textContent = '💾 Save my photo';
         }, 'image/png');
       }, 30);
     });
